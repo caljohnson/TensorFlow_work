@@ -2,11 +2,14 @@
 #Carter Johnson
 
 #for Assignment 1 - Andrew Ng's ML Coursera
+#Univariate Linear Regression from scratch w/ numpy
+#compared to with Tensorflow
 
 from __future__ import division
 
 import numpy as np
 import matplotlib.pyplot as plt
+import tensorflow as tf
 
 
 def loadData(data):
@@ -72,12 +75,12 @@ def uniLinearRegression(X,y):
 		if(new_cost>old_cost):
 			#if hypothesis is costlier, go back and take smaller step
 			alpha= alpha-beta
-			print("do smaller step")
+			print("do smaller step w/ alpha=",alpha)
 		else:
 			#if hypothesis is cheaper, use it and increase step size
 			theta = temp_theta
 			alpha = alpha+beta
-			print("next step bigger")
+			print("next step bigger w/ alpha=",alpha)
 			print("theta=", theta)
 			print("cost=",new_cost)
 			if(abs(old_cost-new_cost)<tol):
@@ -90,24 +93,79 @@ def uniLinearRegression(X,y):
 	print("final theta=",theta)
 	return theta
 
-def plotRegression(X,y,theta, label1, label2):
+def plotRegressions(X,y,theta,theta2, label1, label2):
 	#plot data
 	plt.scatter(X[:,1], y, s=30, c='r', marker='x')
 	plt.xlim(np.amin(X[:,1])-1, np.amax(X[:,1]+1))
 	plt.xlabel(label1)
 	plt.ylabel(label2)
 
-	#draw hypothesis
+	#draw hypothesis 1 - numpy model
 	inputs = np.c_[np.ones(50),np.linspace(np.amin(X[:,1])-1,np.amax(X[:,1])+1)]
 	h = inputs.dot(theta)
 	plt.plot(inputs,h)
+
+	#draw hyp 2 - tensorflow model
+	h2 = inputs.dot(theta2)
+	plt.plot(inputs,h2)
 	plt.show()
 
+def tensorFlowRegression(train_X,train_Y):
+	#output
+	theta = np.zeros((2,1))
+
+	# Parameters
+	learning_rate = 0.025
+	training_epochs = 5000
+	display_step = 100
+	n_samples = train_Y.size
+
+	# tf Graph Input
+	X = tf.placeholder("float")
+	Y = tf.placeholder("float")
+
+	# Set model weights
+	W = tf.Variable(0.0, name="weight")
+	b = tf.Variable(0.0, name="bias")
+
+	# Construct a linear model
+	h = tf.add(tf.multiply(X, W), b)
+
+	# Mean squared error
+	cost = tf.reduce_sum(tf.square(h-Y))/(2*n_samples)
+	# Gradient descent
+	optimizer = tf.train.AdagradOptimizer(learning_rate).minimize(cost)
+
+	# Initializing the variables
+	init = tf.global_variables_initializer()
+
+	# Launch the graph
+	with tf.Session() as sess:
+		sess.run(init)
+
+		# Fit all training data
+		for epoch in range(training_epochs):
+			for (x, y) in zip(train_X, train_Y):
+				sess.run(optimizer, feed_dict={X: x, Y: y})
+
+			# Display logs per epoch step
+			if (epoch+1) % display_step == 0:
+				c = sess.run(cost, feed_dict={X: train_X, Y:train_Y})
+				print("Epoch:", '%04d' % (epoch+1), "cost=", "{:.9f}".format(c), "W=", sess.run(W), "b=", sess.run(b))
+
+		print("Optimization Finished!")
+		training_cost = sess.run(cost, feed_dict={X: train_X, Y: train_Y})
+		print("Training cost=", training_cost, "W=", sess.run(W), "b=", sess.run(b), '\n')
+		theta[0] = sess.run(b)
+		theta[1] = sess.run(W)
+
+	return theta
 
 def main():
 	[X,y] = loadData('ex1data1.txt')
 	theta = uniLinearRegression(X,y)
-	plotRegression(X,y,theta,'Pop. of city in 10,000s', 'Profit in $10,000s')
+	theta2 = tensorFlowRegression(X,y)
+	plotRegressions(X,y,theta, theta2, 'Pop. of city in 10,000s', 'Profit in $10,000s')
 
 
 if __name__ == '__main__':
