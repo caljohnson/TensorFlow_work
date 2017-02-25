@@ -10,7 +10,7 @@ from __future__ import division
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
-
+from sklearn.linear_model import LinearRegression
 
 def loadData(data):
 	#Load the data set for linear regression
@@ -103,11 +103,17 @@ def plotRegressions(X,y,theta,theta2, label1, label2):
 	#draw hypothesis 1 - numpy model
 	inputs = np.c_[np.ones(50),np.linspace(np.amin(X[:,1])-1,np.amax(X[:,1])+1)]
 	h = inputs.dot(theta)
-	plt.plot(inputs,h)
+	plt.plot(inputs,h, label="GD w/ var learning rate", c="b")
 
 	#draw hyp 2 - tensorflow model
 	h2 = inputs.dot(theta2)
-	plt.plot(inputs,h2)
+	plt.plot(inputs,h2, label="tensorflow optimizer", c="k")
+
+	# Compare with Scikit-learn Linear regression 
+	regr = LinearRegression()
+	regr.fit(X[:,1].reshape(-1,1), y.ravel())
+	plt.plot(inputs, regr.intercept_+regr.coef_*inputs, label='Linear regression (Scikit-learn GLM)', c="g")
+	plt.legend()
 	plt.show()
 
 def tensorFlowRegression(train_X,train_Y):
@@ -115,9 +121,9 @@ def tensorFlowRegression(train_X,train_Y):
 	theta = np.zeros((2,1))
 
 	# Parameters
-	learning_rate = 0.025
-	training_epochs = 5000
-	display_step = 100
+	learning_rate = 0.05
+	training_epochs = 5500
+	display_step = 500
 	n_samples = train_Y.size
 
 	# tf Graph Input
@@ -125,16 +131,15 @@ def tensorFlowRegression(train_X,train_Y):
 	Y = tf.placeholder("float")
 
 	# Set model weights
-	W = tf.Variable(0.0, name="weight")
-	b = tf.Variable(0.0, name="bias")
+	W = tf.Variable(np.zeros((2,1),dtype='f'), name="weights")
 
 	# Construct a linear model
-	h = tf.add(tf.multiply(X, W), b)
+	h = tf.reduce_sum(tf.multiply(X, tf.transpose(W)))
 
 	# Mean squared error
 	cost = tf.reduce_sum(tf.square(h-Y))/(2*n_samples)
 	# Gradient descent
-	optimizer = tf.train.AdagradOptimizer(learning_rate).minimize(cost)
+	optimizer = tf.train.AdaGradient(learning_rate).minimize(cost)
 
 	# Initializing the variables
 	init = tf.global_variables_initializer()
@@ -142,6 +147,9 @@ def tensorFlowRegression(train_X,train_Y):
 	# Launch the graph
 	with tf.Session() as sess:
 		sess.run(init)
+
+		c = sess.run(cost, feed_dict={X: train_X, Y:train_Y})
+		print("Epoch:", '%04d' % (0), "cost=", "{:.9f}".format(c), "W=", sess.run(W))
 
 		# Fit all training data
 		for epoch in range(training_epochs):
@@ -151,13 +159,12 @@ def tensorFlowRegression(train_X,train_Y):
 			# Display logs per epoch step
 			if (epoch+1) % display_step == 0:
 				c = sess.run(cost, feed_dict={X: train_X, Y:train_Y})
-				print("Epoch:", '%04d' % (epoch+1), "cost=", "{:.9f}".format(c), "W=", sess.run(W), "b=", sess.run(b))
+				print("Epoch:", '%04d' % (epoch+1), "cost=", "{:.9f}".format(c), "W=", sess.run(W))
 
 		print("Optimization Finished!")
 		training_cost = sess.run(cost, feed_dict={X: train_X, Y: train_Y})
-		print("Training cost=", training_cost, "W=", sess.run(W), "b=", sess.run(b), '\n')
-		theta[0] = sess.run(b)
-		theta[1] = sess.run(W)
+		print("Training cost=", training_cost, "W=", sess.run(W), '\n')
+		theta = sess.run(W)
 
 	return theta
 
@@ -166,7 +173,7 @@ def main():
 	theta = uniLinearRegression(X,y)
 	theta2 = tensorFlowRegression(X,y)
 	plotRegressions(X,y,theta, theta2, 'Pop. of city in 10,000s', 'Profit in $10,000s')
-
+	
 
 if __name__ == '__main__':
 	main()	
