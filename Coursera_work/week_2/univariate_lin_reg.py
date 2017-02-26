@@ -122,7 +122,7 @@ def tensorFlowRegression(train_X,train_Y):
 
 	# Parameters
 	learning_rate = 0.05
-	training_epochs = 5500
+	training_epochs = 5511
 	display_step = 500
 	n_samples = train_Y.size
 
@@ -139,7 +139,7 @@ def tensorFlowRegression(train_X,train_Y):
 	# Mean squared error
 	cost = tf.reduce_sum(tf.square(h-Y))/(2*n_samples)
 	# Gradient descent
-	optimizer = tf.train.AdaGradient(learning_rate).minimize(cost)
+	optimizer = tf.train.AdagradOptimizer(learning_rate).minimize(cost)
 
 	# Initializing the variables
 	init = tf.global_variables_initializer()
@@ -159,7 +159,10 @@ def tensorFlowRegression(train_X,train_Y):
 			# Display logs per epoch step
 			if (epoch+1) % display_step == 0:
 				c = sess.run(cost, feed_dict={X: train_X, Y:train_Y})
-				print("Epoch:", '%04d' % (epoch+1), "cost=", "{:.9f}".format(c), "W=", sess.run(W))
+				theta=sess.run(W)
+				c_2 = computeCost(train_X, train_Y, theta)
+				print("real cost=",c_2)
+				print("Epoch:", '%04d' % (epoch+1), "cost=", c, "W=", sess.run(W))
 
 		print("Optimization Finished!")
 		training_cost = sess.run(cost, feed_dict={X: train_X, Y: train_Y})
