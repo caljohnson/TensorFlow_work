@@ -8,7 +8,10 @@ from __future__ import division
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
+import tensorflow as tf
 from mpl_toolkits.mplot3d import Axes3D
+from sklearn.linear_model import LinearRegression
+
 
 def loadData(data):
   #Load the data set for linear regression
@@ -27,7 +30,7 @@ def loadData(data):
   #return the data into input Variable X, output y, and vector sizes m
   return X,y
 
-def plotModel(X,y,xlab,ylab,zlab,theta):
+def plotModel(X,y,xlab,ylab,zlab,theta,theta2):
   #plot data input X vs output y with labels xlab, ylab
   mpl.rcParams['legend.fontsize'] = 10
   fig=plt.figure()
@@ -41,11 +44,22 @@ def plotModel(X,y,xlab,ylab,zlab,theta):
   ax.set_ylabel(ylab)
   ax.set_zlabel(zlab)
 
-  #add 2-variable linear regression model
+  #add 2-variable linear regression model - vanilla
   grid_x = np.linspace(np.amin(sizes),np.amax(sizes),100)
   grid_y = np.linspace(np.amin(rooms),np.amax(rooms),100)
   h = theta[0]+theta[1]*grid_x+theta[2]*grid_y
-  ax.plot(grid_x,grid_y,h, label='hypothesis')
+  ax.plot(grid_x,grid_y,h, label='vanilla hypothesis', c='b')
+
+  #add comparison with tensorflow regression
+  h2 = theta2[0]+theta2[1]*grid_x+theta2[2]*grid_y
+  ax.plot(grid_x,grid_y,h2, label='tensorflow regression', c='r')
+
+
+  #add comparison with SciKit-learn linear regression
+  regr = LinearRegression()
+  regr.fit(np.c_[X[:,1].reshape(-1,1), X[:,2].reshape(-1,1)], y.ravel())
+  ax.plot(grid_x, grid_y, regr.intercept_+regr.coef_[0]*grid_x +regr.coef_[1]*grid_y, label='Linear regression (Scikit-learn GLM)', c="g")
+
   ax.legend()
   plt.show()
 
@@ -150,12 +164,69 @@ def featureNormalize(X,y):
   
   return x_normd,y_normd
 
+def tensorFlowRegression(train_X,train_Y):
+  #output
+  m = np.shape(train_X)[1]
+  theta = np.zeros((m,1))
+
+  # Parameters
+  learning_rate = 0.05
+  training_epochs = 300
+  display_step = 100
+  n_samples = train_Y.size
+
+  # tf Graph Input
+  X = tf.placeholder("float")
+  Y = tf.placeholder("float")
+
+  # Set model weights
+  W = tf.Variable(np.zeros((m,1),dtype='f'), name="weights")
+
+  # Construct a linear model
+  h = tf.reduce_sum(tf.multiply(X, tf.transpose(W)))
+
+  # Mean squared error
+  cost = tf.reduce_sum(tf.square(h-Y))/(2*n_samples)
+  # Gradient descent
+  optimizer = tf.train.AdagradOptimizer(learning_rate).minimize(cost)
+
+  # Initializing the variables
+  init = tf.global_variables_initializer()
+
+  # Launch the graph
+  with tf.Session() as sess:
+    sess.run(init)
+
+    c = sess.run(cost, feed_dict={X: train_X, Y:train_Y})
+    print("Epoch:", '%04d' % (0), "cost=", "{:.9f}".format(c), "W=", sess.run(W))
+
+    # Fit all training data
+    for epoch in range(training_epochs):
+      for (x, y) in zip(train_X, train_Y):
+        sess.run(optimizer, feed_dict={X: x, Y: y})
+
+      # Display logs per epoch step
+      if (epoch+1) % display_step == 0:
+        c = sess.run(cost, feed_dict={X: train_X, Y:train_Y})
+        theta=sess.run(W)
+        c_2 = computeCost(train_X, train_Y, theta)
+        print("real cost=",c_2)
+        print("Epoch:", '%04d' % (epoch+1), "cost=", c, "W=", sess.run(W))
+
+    print("Optimization Finished!")
+    training_cost = sess.run(cost, feed_dict={X: train_X, Y: train_Y})
+    print("Training cost=", training_cost, "W=", sess.run(W), '\n')
+    theta = sess.run(W)
+
+  return theta  
+
 def main():
   [X,y] = loadData("ex1data2.txt")
   [X,y] = featureNormalize(X,y)
 
   theta = multiLinearRegression(X,y)
-  plotModel(X,y, 'House size', 'No. of Bedrooms', 'Price of House', theta)
+  theta2 = tensorFlowRegression(X,y)
+  plotModel(X,y, 'House size', 'No. of Bedrooms', 'Price of House', theta, theta2)
 
 
 if __name__ == '__main__':	
