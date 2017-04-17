@@ -11,6 +11,8 @@ import numpy as np
 import tensorflow as tf
 from mpl_toolkits.mplot3d import Axes3D
 from sklearn.linear_model import LinearRegression
+import theano
+import theano.tensor as T
 
 
 def loadData(data):
@@ -30,7 +32,7 @@ def loadData(data):
   #return the data into input Variable X, output y, and vector sizes m
   return X,y
 
-def plotModel(X,y,xlab,ylab,zlab,theta,theta2):
+def plotModel(X,y,xlab,ylab,zlab,theta,theta2,theta3):
   #plot data input X vs output y with labels xlab, ylab
   mpl.rcParams['legend.fontsize'] = 10
   fig=plt.figure()
@@ -53,6 +55,10 @@ def plotModel(X,y,xlab,ylab,zlab,theta,theta2):
   #add comparison with tensorflow regression
   h2 = theta2[0]+theta2[1]*grid_x+theta2[2]*grid_y
   ax.plot(grid_x,grid_y,h2, label='tensorflow regression', c='r')
+
+  #add comparison with theano regression
+  h3 = theta3[0]+theta3[1]*grid_x+theta3[2]*grid_y
+  ax.plot(grid_x,grid_y,h2, label='theano regression', c='k')
 
 
   #add comparison with SciKit-learn linear regression
@@ -220,13 +226,66 @@ def tensorFlowRegression(train_X,train_Y):
 
   return theta  
 
+def theanoRegression(data):
+  rng=np.random
+  #get data
+  data = np.loadtxt(data, delimiter=',')
+  train_X = np.c_[data[:,0], data[:,1]]
+  train_Y = data[:,2]
+  print(train_X.shape, train_Y.shape)
+  #declare Theano symbolic variables
+  x = T.dmatrix("x")
+  y = T.dvector("y")
+
+  #training sample size
+  No_samples=train_X.shape[0]
+
+  #initialize weight vector randomly, 
+  #shared values to keep between training iterations
+  # theta = theano.shared(rng.randn(2), name="theta")
+  w = theano.shared(rng.randn(2), name="w")
+  b = theano.shared(0.,name="b")
+  print("initial model:", w.get_value(), b.get_value())
+
+  #construct theano expression graph
+  #linear hypothesis
+  prediction = T.dot(x,w) + b
+  #cost to minimize
+  cost = T.sum(T.pow(prediction-y,2))/(2*No_samples)
+  #compute gradient of cost wrt theta=b,w
+  gradw = T.grad(cost,w)
+  gradb = T.grad(cost,b)
+
+  #learning rate
+  lr = 0.0001
+  #training steps
+  tsteps = 10000
+
+  #compile
+  train = theano.function(
+        inputs=[x,y],
+        outputs=cost,
+        updates=[(w, w-lr*gradw),(b, b-lr*gradb)])
+  test = theano.function(inputs=[x],outputs=prediction)
+
+  #train
+  for i in range(tsteps):
+    err = train(train_X,train_Y)
+  theta_b = b.get_value()
+  [theta_w1, theta_w2] = w.get_value()
+  theta = np.asarray([theta_b, theta_w1, theta_w2])
+  print(theta)
+
+  return theta  
+
 def main():
   [X,y] = loadData("ex1data2.txt")
   [X,y] = featureNormalize(X,y)
 
   theta = multiLinearRegression(X,y)
   theta2 = tensorFlowRegression(X,y)
-  plotModel(X,y, 'House size', 'No. of Bedrooms', 'Price of House', theta, theta2)
+  theta3 = theanoRegression("ex1data2.txt")
+  plotModel(X,y, 'House size', 'No. of Bedrooms', 'Price of House', theta, theta2, theta3)
 
 
 if __name__ == '__main__':	
