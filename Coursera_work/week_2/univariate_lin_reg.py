@@ -3,13 +3,15 @@
 
 #for Assignment 1 - Andrew Ng's ML Coursera
 #Univariate Linear Regression from scratch w/ numpy
-#compared to with Tensorflow
+#compared to with Tensorflow and Theano
 
 from __future__ import division
 
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
+import theano
+import theano.tensor as T
 from sklearn.linear_model import LinearRegression
 
 def loadData(data):
@@ -171,8 +173,61 @@ def tensorFlowRegression(train_X,train_Y):
 
 	return theta
 
+def theanoRegression(data):
+	rng=np.random
+	#get data
+	data = np.loadtxt(data, delimiter=',')
+	train_X = np.asarray(data[:,0])
+	train_Y = np.asarray(data[:,1])
+	print(train_X, train_Y)
+	#declare Theano symbolic variables
+	x = T.vector("x")
+	y = T.vector("y")
+
+	#training sample size
+	No_samples=train_X.shape[0]
+
+	#initialize weight vector randomly, 
+	#shared values to keep between training iterations
+	# theta = theano.shared(rng.randn(2), name="theta")
+	w = theano.shared(rng.randn(1), name="w")
+	b = theano.shared(0.,name="b")
+	print("initial model:", w.get_value(), b.get_value())
+
+	#construct theano expression graph
+	#linear hypothesis
+	prediction = T.dot(x,w) + b
+	#cost to minimize
+	cost = T.sum(T.pow(prediction-y,2))/(2*No_samples)
+	#compute gradient of cost wrt theta=b,w
+	gradw = T.grad(cost,w)
+	gradb = T.grad(cost,b)
+
+	#learning rate
+	lr = 0.1
+	#training steps
+	tsteps = 10000
+
+	#compile
+	train = theano.function(
+				inputs=[x,y],
+				outputs=cost,
+				updates=[(w, w-lr*gradw),(b, b-lr*gradb)])
+	test = theano.function(inputs=[x],outputs=prediction)
+
+	#train
+	for i in range(tsteps):
+		err = train(train_X,train_Y)
+	theta = [b.get_value, w.get_value]
+
+	print("final model:", theta)
+	print("target values for Y:", train_Y)
+	print("prediction on Y:", test(train_X))	
+	return theta
+
 def main():
 	[X,y] = loadData('ex1data1.txt')
+	#theta = theanoRegression('ex1data1.txt')
 	theta = uniLinearRegression(X,y)
 	theta2 = tensorFlowRegression(X,y)
 	plotRegressions(X,y,theta, theta2, 'Pop. of city in 10,000s', 'Profit in $10,000s')
