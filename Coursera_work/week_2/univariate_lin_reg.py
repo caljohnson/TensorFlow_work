@@ -95,7 +95,7 @@ def uniLinearRegression(X,y):
 	print("final theta=",theta)
 	return theta
 
-def plotRegressions(X,y,theta,theta2, label1, label2):
+def plotRegressions(X,y,theta,theta2, theta3, label1, label2):
 	#plot data
 	plt.scatter(X[:,1], y, s=30, c='r', marker='x')
 	plt.xlim(np.amin(X[:,1])-1, np.amax(X[:,1]+1))
@@ -111,10 +111,15 @@ def plotRegressions(X,y,theta,theta2, label1, label2):
 	h2 = inputs.dot(theta2)
 	plt.plot(inputs,h2, label="tensorflow optimizer", c="k")
 
+	#draw hyp 3 - Theano model
+	h3 = inputs.dot(theta3)
+	plt.plot(inputs, h3, label="Theano", c="r")
+
+
 	# Compare with Scikit-learn Linear regression 
 	regr = LinearRegression()
 	regr.fit(X[:,1].reshape(-1,1), y.ravel())
-	plt.plot(inputs, regr.intercept_+regr.coef_*inputs, label='Linear regression (Scikit-learn GLM)', c="g")
+	plt.plot(inputs,regr.intercept_+regr.coef_*inputs, label='Linear regression (Scikit-learn GLM)', c="g")
 	plt.legend()
 	plt.show()
 
@@ -125,6 +130,7 @@ def tensorFlowRegression(train_X,train_Y):
 	# Parameters
 	learning_rate = 0.05
 	training_epochs = 5511
+	#training_epochs=1
 	display_step = 500
 	n_samples = train_Y.size
 
@@ -177,12 +183,12 @@ def theanoRegression(data):
 	rng=np.random
 	#get data
 	data = np.loadtxt(data, delimiter=',')
-	train_X = np.asarray(data[:,0])
-	train_Y = np.asarray(data[:,1])
-	print(train_X, train_Y)
+	train_X = data[:,0]
+	train_Y = data[:,1]
+	print(train_X.shape, train_Y.shape)
 	#declare Theano symbolic variables
-	x = T.vector("x")
-	y = T.vector("y")
+	x = T.dvector("x")
+	y = T.dvector("y")
 
 	#training sample size
 	No_samples=train_X.shape[0]
@@ -190,7 +196,7 @@ def theanoRegression(data):
 	#initialize weight vector randomly, 
 	#shared values to keep between training iterations
 	# theta = theano.shared(rng.randn(2), name="theta")
-	w = theano.shared(rng.randn(1), name="w")
+	w = theano.shared(1., name="w")
 	b = theano.shared(0.,name="b")
 	print("initial model:", w.get_value(), b.get_value())
 
@@ -204,7 +210,7 @@ def theanoRegression(data):
 	gradb = T.grad(cost,b)
 
 	#learning rate
-	lr = 0.1
+	lr = 0.01
 	#training steps
 	tsteps = 10000
 
@@ -218,19 +224,16 @@ def theanoRegression(data):
 	#train
 	for i in range(tsteps):
 		err = train(train_X,train_Y)
-	theta = [b.get_value, w.get_value]
+	theta = np.asarray([b.get_value(), w.get_value()])
 
-	print("final model:", theta)
-	print("target values for Y:", train_Y)
-	print("prediction on Y:", test(train_X))	
 	return theta
 
 def main():
 	[X,y] = loadData('ex1data1.txt')
-	#theta = theanoRegression('ex1data1.txt')
+	theta3 = theanoRegression('ex1data1.txt')
 	theta = uniLinearRegression(X,y)
 	theta2 = tensorFlowRegression(X,y)
-	plotRegressions(X,y,theta, theta2, 'Pop. of city in 10,000s', 'Profit in $10,000s')
+	plotRegressions(X,y,theta, theta2, theta3, 'Pop. of city in 10,000s', 'Profit in $10,000s')
 	
 
 if __name__ == '__main__':

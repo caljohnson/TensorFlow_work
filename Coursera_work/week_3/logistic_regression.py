@@ -160,12 +160,12 @@ def featureNormalize(X,y):
 
 def main():
   [X,y,m] = loadData("ex2data1.txt", "test score 1", "test score 2","admitted")
-  # [X,y] = featureNormalize(X,y)
+  [X,y] = featureNormalize(X,y)
 
-  # theta = LogisticRegressionModel(X,y,m,np.shape(X)[0]+1)
-  init_theta = np.ones(np.shape(X)[0]+1)
-  Result = op.minimize(fun = computeCost,x0 = init_theta, args = (X, y), method = 'TNC', jac = Gradient)
-  optimal_theta = Result.x
+  theta = LogisticRegressionModel(X,y,m,np.shape(X)[0]+1)
+  # init_theta = np.ones(np.shape(X)[0]+1)
+  # Result = op.minimize(fun = computeCost,x0 = init_theta, args = (X, y), method = 'TNC', jac = Gradient)
+  # optimal_theta = Result.x
 
   plotModel(X,y, 'test score 1', 'test score 2', theta)
 
