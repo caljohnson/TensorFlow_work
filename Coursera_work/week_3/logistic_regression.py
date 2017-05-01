@@ -1,6 +1,6 @@
 #Carter Johnson
 #Andrew Ng's Coursera course on ML
-#Week 1 Optional Assignment- Multivariate Linear Regression
+#Week 2 Assignment- Logistic Regression
 
 from __future__ import division
 import tensorflow
@@ -161,6 +161,7 @@ def featureNormalize(X,y):
 def main():
   [X,y,m] = loadData("ex2data1.txt", "test score 1", "test score 2","admitted")
   [X,y] = featureNormalize(X,y)
+  print(X,y); raise
 
   theta = LogisticRegressionModel(X,y,m,np.shape(X)[0]+1)
   # init_theta = np.ones(np.shape(X)[0]+1)

@@ -226,54 +226,51 @@ def tensorFlowRegression(train_X,train_Y):
 
   return theta  
 
-def theanoRegression(data):
+def theanoRegression(train_X, train_Y):
   rng=np.random
-  #get data
-  data = np.loadtxt(data, delimiter=',')
-  train_X = np.c_[data[:,0], data[:,1]]
-  train_Y = data[:,2]
-  print(train_X.shape, train_Y.shape)
+  # test = np.asarray([[0.0], [1.0], [2.0],[3.0],[4.0]])
+  # print(train_X.shape, test.shape)
+
   #declare Theano symbolic variables
   x = T.dmatrix("x")
   y = T.dvector("y")
 
-  #training sample size
+  #training sample size and shape
   No_samples=train_X.shape[0]
+  n_dims = train_X.shape[1]
 
   #initialize weight vector randomly, 
   #shared values to keep between training iterations
-  # theta = theano.shared(rng.randn(2), name="theta")
-  w = theano.shared(rng.randn(2), name="w")
-  b = theano.shared(0.,name="b")
-  print("initial model:", w.get_value(), b.get_value())
+  w = theano.shared(value=np.zeros((n_dims, 1),
+    dtype=theano.config.floatX), name='w', borrow=True)
+
+  print("initial model:", w.get_value())
 
   #construct theano expression graph
   #linear hypothesis
-  prediction = T.dot(x,w) + b
+  prediction = T.dot(w,x)
   #cost to minimize
   cost = T.sum(T.pow(prediction-y,2))/(2*No_samples)
-  #compute gradient of cost wrt theta=b,w
+  #compute gradient of cost wrt w
   gradw = T.grad(cost,w)
-  gradb = T.grad(cost,b)
 
   #learning rate
-  lr = 0.0001
+  lr = 0.01
   #training steps
   tsteps = 10000
 
   #compile
   train = theano.function(
-        inputs=[x,y],
+        inputs=[],
         outputs=cost,
-        updates=[(w, w-lr*gradw),(b, b-lr*gradb)])
+        updates=[(w, w-lr*gradw)],
+        givens={x: train_X, y: train_Y})
   test = theano.function(inputs=[x],outputs=prediction)
 
   #train
   for i in range(tsteps):
-    err = train(train_X,train_Y)
-  theta_b = b.get_value()
-  [theta_w1, theta_w2] = w.get_value()
-  theta = np.asarray([theta_b, theta_w1, theta_w2])
+    err = train()
+  theta = np.asarray(w.get_value())
   print(theta)
 
   return theta  
@@ -282,9 +279,9 @@ def main():
   [X,y] = loadData("ex1data2.txt")
   [X,y] = featureNormalize(X,y)
 
-  theta = multiLinearRegression(X,y)
-  theta2 = tensorFlowRegression(X,y)
-  theta3 = theanoRegression("ex1data2.txt")
+  # theta = multiLinearRegression(X,y)
+  # theta2 = tensorFlowRegression(X,y)
+  theta3 = theanoRegression(X,y)
   plotModel(X,y, 'House size', 'No. of Bedrooms', 'Price of House', theta, theta2, theta3)
 
 
