@@ -75,7 +75,7 @@ def tensorFlowRegLogRegression(train_X,train_Y, reg_lam):
   regularizer = tf.reduce_sum(tf.square(W[:,1:]))/(2*n_samples)
   cost = tf.reduce_sum(tf.multiply(-Y,tf.log(h)) - tf.multiply(1-Y,tf.log(1-h)))/n_samples + reg_lam*regularizer
   # Gradient descent
-  optimizer = tf.train.AdagradOptimizer(learning_rate).minimize(cost)
+  optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(cost)
 
   # Initializing the variables
   init = tf.global_variables_initializer()
@@ -85,7 +85,7 @@ def tensorFlowRegLogRegression(train_X,train_Y, reg_lam):
     sess.run(init)
 
     c = sess.run(cost, feed_dict={X: train_X, Y:train_Y})
-    # print("Epoch:", '%04d' % (0), "cost=", "{:.9f}".format(c), "W=", sess.run(W))
+    print("Epoch:", '%04d' % (0), "cost=", "{:.9f}".format(c), "W=", sess.run(W))
 
     # Fit all training data
     for epoch in range(training_epochs):
@@ -96,7 +96,7 @@ def tensorFlowRegLogRegression(train_X,train_Y, reg_lam):
       if (epoch+1) % display_step == 0:
         c = sess.run(cost, feed_dict={X: train_X, Y:train_Y})
         theta=sess.run(W)
-        # print("Epoch:", '%04d' % (epoch+1), "cost=", c, "W=", sess.run(W))
+        print("Epoch:", '%04d' % (epoch+1), "cost=", c, "W=", sess.run(W))
 
     print("Optimization Finished!")
     training_cost = sess.run(cost, feed_dict={X: train_X, Y: train_Y})
@@ -140,6 +140,6 @@ if __name__ == '__main__':
   [X,y] = loadData("ex2data2.txt")
   X = mapFeature(X)
   # X = featureNormalize(X)
-  reg_lam = 1 #regularizer lambda parameter
+  reg_lam = 0 #regularizer lambda parameter
   theta = tensorFlowRegLogRegression(X,y, reg_lam)
   plotModel(X,y, 'chip test 1', 'chip test 2',theta)
