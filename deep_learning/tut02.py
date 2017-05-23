@@ -17,19 +17,25 @@ from sklearn.metrics import confusion_matrix
 import time
 from datetime import timedelta
 import math
+from scipy.stats import bernoulli
 
 #-------Configuration of Neural Network------
 
 #convolutional layer 1
 filter_size1 = 5	#convolution filters are 5x5 pixels
 num_filters1 = 16	#16 of these filters total
+strides1 = [1,2,2,1]
 
 #convolutional layer 2
 filter_size2 = 5	#convolution filters are 5x5 pixels
 num_filters2 = 36	#36 of these filters total
+strides2 = [1,1,1,1]
 
 #fully-connected layer
 fc_size = 128		#number of neurons in fully-connected layer
+
+#dropout layer
+dropout_prob = 0.2 #prob of dropout/dropout percentage
 
 #---------Load Data-----------------
 from tensorflow.examples.tutorials.mnist import input_data
@@ -101,6 +107,7 @@ def new_conv_layer(input, 				#previous layer
 					num_input_channels,	#num. channels in prev. layer
 					filter_size,		#width and height of each filter
 					num_filters,		#num. of filters
+					conv_strides,		#stride lengths of convolution
 					use_pooling=True):	#use 2x2 max-pooling	
 	"""
 	creates new convolutional layer in computation TF graph
@@ -120,7 +127,7 @@ def new_conv_layer(input, 				#previous layer
 	#padding set to 'SAME' so that input image padded w/ zeros so that output has same size
 	layer = tf.nn.conv2d(input=input, 
 						filter=weights,
-						strides=[1,1,1,1],
+						strides=conv_strides,
 						padding='SAME')
 	#add biases to results of convolution
 	#a bias-value added to each filter-channel
@@ -199,6 +206,7 @@ x_image = tf.reshape(x, [-1, img_size, img_size, num_channels])
 
 y_true = tf.placeholder(tf.float32, shape=[None, num_classes], name='y_true')
 y_true_cls = tf.argmax(y_true, dimension=1)
+dropout_percentage = tf.placeholder(tf.float32, name='dropout_percentage')
 
 #convolutional layer 1
 layer_conv1, weights_conv1 = \
@@ -206,7 +214,8 @@ layer_conv1, weights_conv1 = \
 					num_input_channels=num_channels,
 					filter_size=filter_size1,
 					num_filters=num_filters1,
-					use_pooling=True)
+					conv_strides=strides1,
+					use_pooling=False)
 
 #convolutional layer 2
 layer_conv2, weights_conv2 = \
@@ -214,7 +223,9 @@ layer_conv2, weights_conv2 = \
 					num_input_channels=num_filters1,
 					filter_size=filter_size2,
 					num_filters=num_filters2,
+					conv_strides = strides2,
 					use_pooling=True)
+
 #flatten layer
 layer_flat, num_features = flatten_layer(layer_conv2)
 
@@ -224,8 +235,12 @@ layer_fc1 = new_fc_layer(input=layer_flat,
 					num_outputs=fc_size,
 					use_relu=True)
 
+#dropout layer 1
+layer_do1 = tf.nn.dropout(x=layer_fc1,
+						keep_prob=1-dropout_percentage)
+
 #fully-connected layer 2
-layer_fc2 = new_fc_layer(input=layer_fc1,
+layer_fc2 = new_fc_layer(input=layer_do1,
 					num_inputs=fc_size,
 					num_outputs=num_classes,
 					use_relu=False)
@@ -240,7 +255,7 @@ cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits = layer_fc2,
 cost = tf.reduce_mean(cross_entropy)
 
 #optimization method
-optimizer = tf.train.AdamOptimizer(learning_rate=1e-4).minimize(cost)
+optimizer = tf.train.AdamOptimizer(learning_rate=1e-3).minimize(cost)
 
 #performance measures
 correct_prediction = tf.equal(y_pred_cls, y_true_cls)
@@ -271,7 +286,7 @@ def optimize(num_iterations):
 		#get batch of training examples
 		x_batch, y_true_batch = data.train.next_batch(train_batch_size)
 		#put batch in dict w/ proper names for placeholders in TF graph
-		feed_dict_train = {x: x_batch, y_true: y_true_batch}
+		feed_dict_train = {x: x_batch, y_true: y_true_batch, dropout_percentage: dropout_prob}
 		#run optimier using batch of training data
 		session.run(optimizer, feed_dict=feed_dict_train)
 
@@ -359,7 +374,8 @@ def print_test_accuracy(show_example_errors=False,
 
         # Create a feed-dict with these images and labels.
         feed_dict = {x: images,
-                     y_true: labels}
+                     y_true: labels,
+                     dropout_percentage: 0}
 
         # Calculate the predicted class using TensorFlow.
         cls_pred[i:j] = session.run(y_pred_cls, feed_dict=feed_dict)
@@ -394,24 +410,12 @@ def print_test_accuracy(show_example_errors=False,
     # Plot the confusion matrix, if desired.
     if show_confusion_matrix:
         print("Confusion Matrix:")
-        plot_confusion_matrix(cls_pred=cls_pred)
+        print_confusion_matrix(cls_pred=cls_pred)
 
 
 #========== Performance before optimization ==========
 print_test_accuracy()
 
-#=========Performance after 1 optimization iteration =========
-optimize(num_iterations = 1)
+#=========Performance after many optimization iteration =========
+optimize(num_iterations = 2500)
 print_test_accuracy()
-
-#=========Performance after 100 optimization iteration =========
-optimize(num_iterations = 99)
-#print_test_accuracy(show_example_errors=True)		
-
-#=========Performance after 1000 optimization iteration =========
-optimize(num_iterations = 900)
-#print_test_accuracy(show_example_errors=True)
-
-#=========Performance after 10,000 optimization iteration =========
-optimize(num_iterations = 9000)
-print_test_accuracy(show_example_errors=True, show_confusion_matrix=True)
